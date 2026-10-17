@@ -1,0 +1,337 @@
+
+/* ===== Global styles ===== */
+* {
+  box-sizing: border-box;
+}
+
+:root {
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+  color: #172b4d;
+  background: #f3f6fc;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, #e3edff 0, transparent 35%),
+    #f3f6fc;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+/* ===== Main layout ===== */
+.app {
+  width: min(100% - 32px, 900px);
+  margin: 0 auto;
+  padding: 48px 0 64px;
+}
+
+/* ===== Header ===== */
+header {
+  text-align: center;
+  margin-bottom: 36px;
+}
+
+header h1 {
+  margin: 0 0 12px;
+  color: #164e9b;
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 800;
+  letter-spacing: -1.2px;
+}
+
+header p {
+  max-width: 580px;
+  margin: 0 auto;
+  color: #64748b;
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+/* ===== Content panels ===== */
+.panel {
+  margin-bottom: 24px;
+  padding: 28px;
+  background: #ffffff;
+  border: 1px solid #e2eaf5;
+  border-radius: 18px;
+  box-shadow: 0 8px 28px rgba(32, 69, 120, 0.06);
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.panel:hover {
+  box-shadow: 0 12px 34px rgba(32, 69, 120, 0.1);
+}
+
+.panel h2 {
+  margin: 0 0 22px;
+  color: #1e3a5f;
+  font-size: 1.3rem;
+  font-weight: 750;
+}
+
+/* ===== File input ===== */
+input[type="file"] {
+  display: block;
+  width: 100%;
+  margin-bottom: 18px;
+  padding: 14px;
+  color: #475569;
+  background: #f8faff;
+  border: 1px dashed #9db7dc;
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+input[type="file"]:hover {
+  border-color: #3574d4;
+  background: #f1f6ff;
+}
+
+input[type="file"]::file-selector-button {
+  margin-right: 14px;
+  padding: 9px 13px;
+  color: #1d4ed8;
+  background: #e7efff;
+  border: none;
+  border-radius: 8px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+input[type="file"]::file-selector-button:hover {
+  background: #d6e5ff;
+}
+
+/* ===== Text input ===== */
+input[type="text"] {
+  width: 100%;
+  min-width: 0;
+  padding: 14px 16px;
+  color: #172b4d;
+  background: #ffffff;
+  border: 1px solid #cbd7e7;
+  border-radius: 11px;
+  outline: none;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+input[type="text"]::placeholder {
+  color: #94a3b8;
+}
+
+input[type="text"]:focus {
+  border-color: #3979df;
+  box-shadow: 0 0 0 4px rgba(57, 121, 223, 0.12);
+}
+
+/* ===== Buttons ===== */
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 12px 20px;
+  color: #ffffff;
+  background: linear-gradient(135deg, #2563eb, #1749b0);
+  border: none;
+  border-radius: 10px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(37, 99, 235, 0.16);
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    filter 0.18s ease;
+}
+
+button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 7px 16px rgba(37, 99, 235, 0.24);
+  filter: brightness(1.05);
+}
+
+button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ===== Question form ===== */
+form {
+  display: flex;
+  align-items: stretch;
+  gap: 12px;
+}
+
+form input[type="text"] {
+  flex: 1;
+}
+
+form button {
+  flex-shrink: 0;
+}
+
+/* ===== Status message ===== */
+.message {
+  margin: 18px 0 0;
+  padding: 13px 15px;
+  color: #185b40;
+  background: #ecfdf5;
+  border: 1px solid #b7efd3;
+  border-radius: 10px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+/* ===== Selected file and document details ===== */
+.panel > p {
+  color: #64748b;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.panel ul {
+  margin: 0 0 18px;
+  padding-left: 22px;
+  color: #475569;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
+}
+
+.panel strong {
+  color: #1e40af;
+}
+
+/* ===== Answer section ===== */
+.answer {
+  margin-top: 24px;
+  padding: 22px;
+  background: #eff6ff;
+  border: 1px solid #cfe0ff;
+  border-left: 4px solid #2563eb;
+  border-radius: 12px;
+}
+
+.answer h3 {
+  margin: 0 0 12px;
+  color: #1d4ed8;
+  font-size: 1.15rem;
+}
+
+.answer p {
+  margin: 0;
+  color: #263b58;
+  line-height: 1.85;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ===== Source snippets ===== */
+.sources {
+  margin-top: 28px;
+}
+
+.sources > h3 {
+  margin-bottom: 8px;
+  color: #1e3a5f;
+  font-size: 1.2rem;
+}
+
+.sources > p {
+  color: #64748b;
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+.source-item {
+  margin-top: 14px;
+  padding: 18px;
+  background: #fbfdff;
+  border: 1px solid #dce6f3;
+  border-radius: 12px;
+}
+
+.source-item h4 {
+  margin: 0 0 12px;
+  color: #2459a6;
+  font-size: 0.96rem;
+}
+
+.source-item p {
+  margin: 0;
+  color: #475569;
+  font-size: 0.94rem;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* ===== Responsive design ===== */
+@media (max-width: 600px) {
+  .app {
+    width: min(100% - 22px, 900px);
+    padding: 30px 0 40px;
+  }
+
+  header {
+    margin-bottom: 26px;
+  }
+
+  header h1 {
+    letter-spacing: -0.6px;
+  }
+
+  header p {
+    font-size: 0.96rem;
+  }
+
+  .panel {
+    padding: 20px 16px;
+    margin-bottom: 18px;
+    border-radius: 14px;
+  }
+
+  .panel h2 {
+    font-size: 1.15rem;
+  }
+
+  form {
+    flex-direction: column;
+  }
+
+  form button,
+  .panel > button {
+    width: 100%;
+  }
+
+  .answer,
+  .source-item {
+    padding: 16px;
+  }
+}
+
+/* ===== Accessibility ===== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition: none !important;
+  }
+}

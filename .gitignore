@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Uploaded documents and database
+backend/uploads/
+backend/chroma_db/
+
+# Secrets
+.env
+.env.*
+
+# Frontend dependencies and builds
+node_modules/
+dist/
