@@ -31,12 +31,24 @@ A PDF question-answering system built with Retrieval-Augmented Generation (RAG).
 ## Project Structure
 ```
 ai-knowledge-assistant/
-├── main.py            # Entry point
-├── ingest.py          # PDF loading, chunking, and embedding
-├── query.py           # Retrieval and answer generation
-├── requirements.txt   # Python dependencies
+│
+├── backend/
+│   ├── main.py
+│   └── requirements.txt
+│
+├── frontend/
+│   ├── public/
+│   ├── src/
+│   │   ├── assets/
+│   │   ├── App.jsx
+│   │   ├── App.css
+│   │   ├── index.css
+│   │   └── main.jsx
+│   ├── package.json
+│   └── vite.config.js
+│
+├── .gitignore
 └── README.md
-```
 
 ## Getting Started
 
