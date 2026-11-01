@@ -3,15 +3,19 @@ __pycache__/
 *.pyc
 venv/
 .venv/
+.pytest_cache/
+.ruff_cache/
 
-# Uploaded documents and database
-backend/uploads/
-backend/chroma_db/
-
-# Secrets
+# Secrets and local data
 .env
-.env.*
+backend/data/
+backend/eval/results.json
 
-# Frontend dependencies and builds
+# Node
 node_modules/
 dist/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store

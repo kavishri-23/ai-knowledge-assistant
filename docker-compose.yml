@@ -1,0 +1,36 @@
+# Runs the whole stack:  docker compose up --build
+# First run only:        docker compose exec ollama ollama pull llama3.2:1b
+services:
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+
+  backend:
+    build: ./backend
+    environment:
+      OLLAMA_URL: http://ollama:11434
+      OLLAMA_MODEL: llama3.2:1b
+      FRONTEND_ORIGINS: http://localhost:8080
+    ports:
+      - "8000:8000"
+    volumes:
+      - backend-data:/data
+    depends_on:
+      - ollama
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:8000
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+
+volumes:
+  ollama:
+  backend-data:

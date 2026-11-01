@@ -1,109 +1,132 @@
 # AI Knowledge Assistant
 
-A PDF question-answering system built with Retrieval-Augmented Generation (RAG). Ask a question about a PDF and get an answer with the source text and page numbers, so every response can be verified.
+Upload a PDF, ask questions in plain English, and get answers that **cite the pages they came from**.
+Everything runs locally: no API keys and no data leaves your machine.
 
-![Python](https://img.shields.io/badge/Python-3.x-blue) ![ChromaDB](https://img.shields.io/badge/Vector%20DB-ChromaDB-green) ![Ollama](https://img.shields.io/badge/LLM-Ollama-black)
+> Add a screenshot or GIF here: `docs/demo.gif` (record one after your first run).
 
-## Features
-- Upload a PDF and ask questions about its content
-- Vector search retrieves the most relevant passages from the document
-- Answers are generated from the retrieved text, not from guesswork
-- Every answer shows its source text and page number for verification
-- Runs locally with Ollama, so no external API key is needed
+## What it does
 
-## How It Works
-1. **Load:** Read the PDF and extract text page by page.
-2. **Chunk:** Split the text into smaller passages and keep the page number for each.
-3. **Embed and store:** Convert each passage into a vector and store it in ChromaDB.
-4. **Retrieve:** For a question, search ChromaDB for the most similar passages.
-5. **Generate:** Send the question and the retrieved passages to the Ollama model to write the answer.
-6. **Cite:** Return the answer along with the source text and page numbers.
+- Reads a PDF in the background and shows indexing progress.
+- Finds relevant passages with **hybrid search**: semantic vectors plus BM25 keywords, merged with reciprocal rank fusion.
+- Skips the language model entirely when nothing relevant is found, instead of letting it guess.
+- Streams the answer live, with `[1]`, `[2]` citations that link to the exact passages.
+- Keeps several documents at once; identical files are only indexed once.
 
-## Tech Stack
-| Area | Tools |
-|------|-------|
-| Language | Python |
-| Vector database | ChromaDB |
-| LLM runtime | Ollama |
-| PDF parsing | PyPDF / pypdf |
-| Interface | Command line |
+## How it works
 
-## Project Structure
+```mermaid
+flowchart LR
+    UI[React UI] -->|upload PDF| API[FastAPI]
+    API -->|background job| ING[Extract, chunk, embed]
+    ING --> DB[(ChromaDB + SQLite)]
+    UI -->|question| API
+    API --> RET[Hybrid retrieval]
+    RET --> DB
+    RET -->|relevant passages| LLM[Ollama]
+    LLM -->|streamed answer + citations| UI
 ```
-ai-knowledge-assistant/
-│
-├── backend/
-│   ├── main.py
-│   └── requirements.txt
-│
-├── frontend/
-│   ├── public/
-│   ├── src/
-│   │   ├── assets/
-│   │   ├── App.jsx
-│   │   ├── App.css
-│   │   ├── index.css
-│   │   └── main.jsx
-│   ├── package.json
-│   └── vite.config.js
-│
-├── .gitignore
-└── README.md
 
-## Getting Started
+1. **Ingest**: pypdf extracts text per page. Sentence-aware chunks (about 800 characters, 150 overlap, overlap may cross pages) remember their page range.
+2. **Index**: each chunk is embedded with `all-MiniLM-L6-v2` and stored in ChromaDB. Document status lives in SQLite.
+3. **Retrieve**: vector search and BM25 each propose candidates, reciprocal rank fusion merges them, and anything under the similarity threshold is dropped.
+4. **Answer**: the passages go to a local Ollama model with a strict prompt (use only the sources, cite them, say "not found" otherwise). Tokens stream to the browser.
 
-### Prerequisites
-- Python 3.8 or higher
-- [Ollama](https://ollama.com) installed and running
+## Run it
 
-### Installation
+### Option A: Docker (everything at once)
+
 ```bash
-git clone https://github.com/kavishri-23/ai-knowledge-assistant.git
-cd ai-knowledge-assistant
-python3 -m venv venv
-source venv/bin/activate
+docker compose up --build
+docker compose exec ollama ollama pull llama3.2:1b   # first time only
+```
+Open http://localhost:8080. API docs: http://localhost:8000/docs
+
+### Option B: manually
+
+Requirements: Python 3.10+, Node 20+, [Ollama](https://ollama.com).
+
+```bash
+ollama pull llama3.2:1b
+
+# backend
+cd backend
+python -m venv venv
+# Windows: venv\Scripts\activate      macOS/Linux: source venv/bin/activate
 pip install -r requirements.txt
-```
+uvicorn app.main:app --reload --port 8000
 
-### Download the model
+# frontend (new terminal)
+cd frontend
+npm install
+npm run dev
+```
+Open http://localhost:5173
+
+## Configuration
+
+Copy `backend/.env.example` to `backend/.env`. All values are optional.
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `OLLAMA_MODEL` | `llama3.2:1b` | Any model you have pulled; larger models answer better |
+| `OLLAMA_URL` | `http://localhost:11434` | Where Ollama runs |
+| `MAX_UPLOAD_MB` / `MAX_PAGES` | `20` / `300` | Upload limits |
+| `CHUNK_SIZE` / `CHUNK_OVERLAP` | `800` / `150` | Characters per chunk |
+| `TOP_K` | `5` | Passages sent to the model |
+| `MIN_SIMILARITY` | `0.2` | Passages below this cosine similarity are ignored |
+| `FRONTEND_ORIGINS` | localhost:5173 | Comma-separated allowed browser origins |
+
+## API
+
+| Method | Path | Purpose |
+|---|---|---|
+| POST | `/documents` | Upload a PDF (returns 202, indexes in the background) |
+| GET | `/documents`, `/documents/{id}` | List documents / check status |
+| DELETE | `/documents/{id}` | Remove a document and its indexed text |
+| POST | `/ask` | Answer a question (one JSON reply) |
+| POST | `/ask/stream` | Same, streamed as newline-delimited JSON events |
+| POST | `/search` | Retrieval only (`mode`: `hybrid`, `vector`, `keyword`) |
+| GET | `/health` | Server and Ollama status |
+
+## Tests and evaluation
+
 ```bash
-ollama pull llama3
+cd backend
+pip install -r requirements-test.txt
+pytest -q          # unit and API tests; no model or database needed
+ruff check .
 ```
-Use the same model name that your code uses.
 
-### Run
+Tests run against in-memory fakes (`tests/fakes.py`), so CI needs neither Ollama nor PyTorch.
+
+**Measure retrieval quality on your own PDF.** Copy `backend/eval/questions.example.json` to `questions.json`, write 25-30 questions with the page that answers each, start the backend, then:
+
 ```bash
-python3 main.py
+cd backend
+python eval/run_eval.py --pdf path/to/your.pdf --questions eval/questions.json --answers
 ```
 
-## Usage
-1. Run the program and give the path to your PDF.
-2. Wait while the document is processed and stored in ChromaDB.
-3. Type a question about the document.
-4. Read the answer and check the source text and page numbers shown below it.
+Paste your results here (run it yourself; do not estimate):
 
-## Example
-```
-Question: What is the main conclusion of the document?
+| Mode | hit@5 | MRR |
+|---|---|---|
+| vector | _fill in_ | _fill in_ |
+| keyword | _fill in_ | _fill in_ |
+| **hybrid** | _fill in_ | _fill in_ |
 
-Answer: <generated answer>
+## Design decisions
 
-Sources:
-- Page 5: "<relevant passage>"
-- Page 8: "<relevant passage>"
-```
+- **Hash-based document IDs**: the same file is never indexed twice and two files can share a name.
+- **Embed before delete**: re-indexing computes new vectors first, so a failure cannot wipe good data.
+- **Similarity gate before the LLM**: a small model will happily invent an answer; refusing to call it when retrieval finds nothing is more reliable than prompting alone.
+- **Fakes instead of mocks in tests**: the same retrieval code runs in tests and production.
+- **Background ingestion with a status endpoint**: uploads return immediately; large PDFs do not block requests.
 
-## What I Learned
-- Building a RAG pipeline with vector search
-- Storing and querying embeddings with ChromaDB
-- Running a local LLM with Ollama
-- Showing sources in answers to make AI output verifiable
+## Limitations
 
-## Future Improvements
-- Support multiple PDFs at once
-- Add a web interface (FastAPI and React)
-- Add chat history for follow-up questions
-
-## Author
-**Kavishri Senguttuvan**
-[GitHub](https://github.com/kavishri-23) · [LinkedIn](https://www.linkedin.com/in/kavishrisenguttuvan)
+- Scanned (image-only) PDFs are not supported; there is no OCR.
+- Tables and multi-column layouts may extract in a jumbled order.
+- A 1B-parameter model gives weak answers on complex questions; try a larger Ollama model.
+- No authentication: this is meant to run on your own machine.
+- Indexing uses an in-process background task, so a restart marks unfinished documents as failed (upload them again).
