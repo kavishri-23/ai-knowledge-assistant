@@ -1,189 +1,105 @@
+import { useCallback, useEffect, useState } from "react";
+import { deleteDocument, listDocuments, uploadDocument } from "./api";
+import AskPanel from "./components/AskPanel.jsx";
+import DocumentSidebar from "./components/DocumentSidebar.jsx";
 
-import { useState } from "react";
-import "./App.css";
+const BUSY = ["pending", "processing"];
 
-const API_URL = "http://127.0.0.1:8000";
+export default function App() {
+  const [documents, setDocuments] = useState([]);
+  const [selectedId, setSelectedId] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [actionError, setActionError] = useState("");
+  const [connectionError, setConnectionError] = useState("");
 
-function App() {
-  const [file, setFile] = useState(null);
-  const [uploadedFilename, setUploadedFilename] = useState("");
-  const [question, setQuestion] = useState("");
-  const [answer, setAnswer] = useState("");
-  const [sources, setSources] = useState([]);
-  const [message, setMessage] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  const uploadPDF = async () => {
-    if (!file) {
-      setMessage("Please select a PDF first.");
-      return;
-    }
-
-    setLoading(true);
-    setMessage("Uploading and processing your PDF...");
-    setAnswer("");
-    setSources([]);
-    setUploadedFilename("");
-
-    const formData = new FormData();
-    formData.append("file", file);
-
+  const refresh = useCallback(async () => {
     try {
-      const response = await fetch(`${API_URL}/store-pdf`, {
-        method: "POST",
-        body: formData,
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.detail || "Upload failed.");
-      }
-
-      setUploadedFilename(data.filename);
-      setMessage(
-        `Upload successful! ${data.total_pages} pages processed and ${data.total_chunks_stored} text chunks stored.`
-      );
+      setDocuments(await listDocuments());
+      setConnectionError("");
     } catch (error) {
-      setMessage(error.message || "Could not connect to the backend.");
+      setConnectionError(error.message);
+    }
+  }, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
+
+  // While any document is still being indexed, check on it every 1.5 seconds.
+  useEffect(() => {
+    if (!documents.some((doc) => BUSY.includes(doc.status))) return undefined;
+    const timer = setInterval(refresh, 1500);
+    return () => clearInterval(timer);
+  }, [documents, refresh]);
+
+  const handleUpload = async (file) => {
+    setActionError("");
+    setUploading(true);
+    try {
+      const doc = await uploadDocument(file);
+      await refresh();
+      setSelectedId(doc.id);
+    } catch (error) {
+      setActionError(error.message);
     } finally {
-      setLoading(false);
+      setUploading(false);
     }
   };
 
-  const askQuestion = async () => {
-    if (!question.trim()) {
-      setAnswer("Please enter a question.");
-      setSources([]);
-      return;
-    }
-
-    if (!uploadedFilename) {
-      setAnswer("Please upload a PDF first.");
-      setSources([]);
-      return;
-    }
-
-    setLoading(true);
-    setAnswer("");
-    setSources([]);
-
+  const handleDelete = async (doc) => {
+    if (!window.confirm(`Remove "${doc.filename}"? Its indexed text will be deleted.`)) return;
+    setActionError("");
     try {
-      const params = new URLSearchParams({
-        question: question.trim(),
-        filename: uploadedFilename,
-      });
-
-      const response = await fetch(`${API_URL}/ask?${params.toString()}`);
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.detail || "Question failed.");
-      }
-
-      setAnswer(data.answer);
-      setSources(data.sources || []);
+      await deleteDocument(doc.id);
+      if (selectedId === doc.id) setSelectedId(null);
+      await refresh();
     } catch (error) {
-      setAnswer(error.message || "Could not connect to the backend.");
-    } finally {
-      setLoading(false);
+      setActionError(error.message);
     }
   };
+
+  const selected = documents.find((doc) => doc.id === selectedId) ?? null;
 
   return (
-    <main className="app">
-      <header>
-        <h1>AI Knowledge Assistant</h1>
-        <p>Upload a PDF, ask questions, and verify answers from source text.</p>
-      </header>
+    <div className="layout">
+      <DocumentSidebar
+        documents={documents}
+        selectedId={selectedId}
+        uploading={uploading}
+        error={actionError || connectionError}
+        onSelect={setSelectedId}
+        onUpload={handleUpload}
+        onDelete={handleDelete}
+      />
 
-      <section className="panel">
-        <h2>1. Upload your PDF</h2>
-
-        <input
-          type="file"
-          accept=".pdf,application/pdf"
-          onChange={(event) => {
-            setFile(event.target.files?.[0] || null);
-            setUploadedFilename("");
-            setAnswer("");
-            setSources([]);
-            setMessage("");
-          }}
-        />
-
-        {file && <p>Selected file: {file.name}</p>}
-
-        <button onClick={uploadPDF} disabled={loading}>
-          Upload and Process
-        </button>
-
-        {message && <p className="message">{message}</p>}
-
-        {uploadedFilename && (
-          <p>
-            <strong>Active document:</strong> {uploadedFilename}
-          </p>
-        )}
-      </section>
-
-      <section className="panel">
-        <h2>2. Ask a question</h2>
-
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            askQuestion();
-          }}
-        >
-          <input
-            type="text"
-            value={question}
-            onChange={(event) => setQuestion(event.target.value)}
-            placeholder="e.g. What is the company name?"
-            disabled={loading}
-          />
-
-          <button type="submit" disabled={loading || !uploadedFilename}>
-            Ask AI
-          </button>
-        </form>
-
-        {loading && <p>Working on your request...</p>}
-
-        {answer && (
-          <div className="answer">
-            <h3>Answer</h3>
-            <p>{answer}</p>
-          </div>
-        )}
-
-        {sources.length > 0 && (
-          <div className="sources">
-            <h3>Source text</h3>
+      <main className="main">
+        {!selected && (
+          <div className="empty">
+            <h1>Ask a question, check the page</h1>
             <p>
-              These are the retrieved passages used as context for the answer.
+              Upload a PDF, then ask about it. Every answer points to the passages it used, so
+              you can verify it yourself.
             </p>
-
-            {sources.map((source, index) => (
-              <article
-                className="source-item"
-                key={`${source.page ?? "unknown"}-${index}`}
-              >
-                <h4>
-                  Source {index + 1}
-                  {source.page != null
-                    ? ` — Page ${source.page}`
-                    : " — Page not recorded"}
-                </h4>
-                <p>{source.text}</p>
-              </article>
-            ))}
           </div>
         )}
-      </section>
-    </main>
+
+        {selected && BUSY.includes(selected.status) && (
+          <div className="empty">
+            <h1>{selected.filename}</h1>
+            <p>Reading and indexing this document. Long PDFs can take a minute.</p>
+          </div>
+        )}
+
+        {selected && selected.status === "failed" && (
+          <div className="empty">
+            <h1>{selected.filename}</h1>
+            <p role="alert">{selected.error || "This document could not be processed."}</p>
+            <p>Remove it from the list and upload a different file.</p>
+          </div>
+        )}
+
+        {selected && selected.status === "ready" && <AskPanel key={selected.id} doc={selected} />}
+      </main>
+    </div>
   );
 }
-
-export default App;
