@@ -1,0 +1,12 @@
+[
+  {
+    "question": "Replace with a question your PDF can answer",
+    "expected_pages": [1],
+    "answer_keywords": ["a word the correct answer must contain"]
+  },
+  {
+    "question": "Write 25-30 of these, spread across the whole document",
+    "expected_pages": [2, 3],
+    "answer_keywords": ["keyword one", "keyword two"]
+  }
+]
